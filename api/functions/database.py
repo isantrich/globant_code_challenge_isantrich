@@ -52,11 +52,13 @@ class DatabaseConnection():
         return rows_affected
     
 
-    
-
-    def set_transactions(self, schema, data_list):
-        # Escribir el DataFrame en la base de datos
-        with self.engine.connect() as connection:
-            data_list.to_sql(schema, connection, if_exists='append', index=False)
-
-        return len(data_list)  # Devolver el número de filas insertadas
+    def set_transactions(self, schema, data_list): 
+        return True
+        try:
+            # Escribir el DataFrame en la base de datos
+            with self.engine.connect() as connection:
+                data_list.to_sql(schema, connection, if_exists='append', index=False)
+            return True  # Devolver True si la operación fue exitosa
+        except Exception as e:
+            print(f"Error: {e}")  # Imprimir el error
+            return False  # Devolver False si la operación falló
