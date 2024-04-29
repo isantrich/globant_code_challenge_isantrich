@@ -17,8 +17,8 @@ def main():
                     
                 filename_without_extension = os.path.splitext(filename)[0]
                 datos = {"fileName": filename_without_extension, "fileData": csv_data}
-
-                
+                print("este es el archivo de test")
+                print(filename_without_extension)
                 response = requests.post(url, data=json.dumps(datos), headers = {"Content-Type": "application/json"})
                 response.raise_for_status() 
 
