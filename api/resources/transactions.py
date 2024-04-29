@@ -6,6 +6,7 @@ from .models import DepartmentModel, JobModel, HiredEmployeeModel
 import pandas as pd
 from io import StringIO
 import traceback
+import numpy as np
 
 MODEL_SCHEMA = { 
         "departments": DepartmentModel,
@@ -13,10 +14,13 @@ MODEL_SCHEMA = {
         "hired_employees": HiredEmployeeModel
     }
 
+FILLNA_PARAMETERS = 0
+
 class GlobantResource(Resource):
 
     def __init__(self):
         self.db = DatabaseConnection()
+
 
     def validar_lote(self, datos, model):
         expected_dtypes = [type_ for field, type_ in model.__annotations__.items()]
@@ -28,6 +32,14 @@ class GlobantResource(Resource):
                 return False, f"La columna {datos.columns.tolist().index(dtype)} tiene un tipo de dato incorrecto. Esperado: {expected_dtype}, Obtenido: {dtype}"
     
         return True, "Todos los datos son válidos"
+    
+
+    def nan_handler(self, datos):
+        for column in datos.columns:
+            if datos[column].isnull().values.any() and datos[column].dtype == 'float64':
+                datos[column] = datos[column].fillna(FILLNA_PARAMETERS)
+                datos[column] = datos[column].astype(np.int64)
+        return datos
 
     def post(self):
         
@@ -48,6 +60,8 @@ class GlobantResource(Resource):
             data = StringIO(fileData)
             
             transaction_data = pd.read_csv(data, header=None, names=MODEL_SCHEMA[fileName].model_fields.keys())
+            transaction_data = self.nan_handler(transaction_data)
+
             print(transaction_data.head())
             print("type:", transaction_data.dtypes)
             is_valid, message = self.validar_lote(transaction_data, MODEL_SCHEMA[fileName])
