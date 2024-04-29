@@ -1,26 +1,28 @@
 from typing import List
 from pydantic import BaseModel
+from pydantic import BaseModel
+import numpy as np
 
 class DepartmentModel(BaseModel):
-    id: int
-    department: str 
+    id: np.int64
+    department: np.object_ 
+
+    class Config:
+        arbitrary_types_allowed = True
 
 class JobModel(BaseModel):
-    id: int
-    job: str
+    id: np.int64
+    job: np.object_
+    
+    class Config:
+        arbitrary_types_allowed = True
 
 class HiredEmployeeModel(BaseModel):
-    id: int
-    name: str
-    datetime: str
-    department_id: int
-    job_id: int
+    id: np.int64
+    name: np.object_
+    datetime: np.object_
+    department_id: np.int64
+    job_id: np.int64
 
-class DepartmentListModel(BaseModel):
-    departments: List[DepartmentModel]
-
-class JobListModel(BaseModel):
-    jobs: List[JobModel]
-
-class HiredEmployeeListModel(BaseModel):
-    hired_employees: List[HiredEmployeeModel]
+    class Config:
+        arbitrary_types_allowed = True

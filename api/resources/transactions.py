@@ -1,21 +1,36 @@
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from flask import request
 from flask_restful import Resource, reqparse
 from functions.database import DatabaseConnection 
-from .models import DepartmentModel
+from .models import DepartmentModel, JobModel, HiredEmployeeModel
 import pandas as pd
 from io import StringIO
+import traceback
 
+MODEL_SCHEMA = { 
+        "departments": DepartmentModel,
+        "jobs": JobModel,
+        "hired_employees": HiredEmployeeModel
+    }
 
 class GlobantResource(Resource):
-    def __init__(self):
-        self.db = DatabaseConnection() 
 
-    def get(self):
-        departments = self.db.get_departments()
-        return {'departments': [DepartmentModel(**dept).dict() for dept in departments]}, 200
+    def __init__(self):
+        self.db = DatabaseConnection()
+
+    def validar_lote(self, datos, model):
+        expected_dtypes = [type_ for field, type_ in model.__annotations__.items()]
+        print("Expected dtypes:")
+        print(expected_dtypes)
+    
+        for dtype, expected_dtype in zip(datos.dtypes, expected_dtypes):
+            if dtype != expected_dtype:
+                return False, f"La columna {datos.columns.tolist().index(dtype)} tiene un tipo de dato incorrecto. Esperado: {expected_dtype}, Obtenido: {dtype}"
+    
+        return True, "Todos los datos son válidos"
 
     def post(self):
+        
         # Parametros requerido en la peticion post
         parser = reqparse.RequestParser()
         parser.add_argument('fileName', required=True, type=str)
@@ -25,30 +40,27 @@ class GlobantResource(Resource):
 
         fileName = args['fileName']
         fileData = args['fileData']
+        print(f"fileName: {fileName}")
+        print(f"fileData: {type(fileData)}")
 
         try:
             # Recibo datos y convierto en un df
             data = StringIO(fileData)
-            transaction_data=pd.read_csv(data)
-
-        except:
-            return {'message': "Archivo no valido."}, 500
-        
-        result = self.db.set_transactions(schema=fileName, data_list=transaction_data)
-        if result:
-            return {'message': "Datos CSV procesados correctamete."}, 200
-        else:
-            return {'message': "Falló al procesar los datos."}, 500
-
-
-
-    #    try:
-    #        departamento = DepartmentModel(**data)
-    #        rows_affected = self.db.set_departments(departamento)
-    #        if rows_affected > 0:
-    #            return {'message': 'Departamento creado correctamente', 'data': departamento.dict()}, 201
-    #        else:
-    #            return {'message': 'Ocurrió un error al agregar el departamento'}, 500
-    #    except ValidationError as e:
-    #        return {'error': 'Error de validación', 'details': e.errors()}, 400
-        
+            
+            transaction_data = pd.read_csv(data, header=None, names=MODEL_SCHEMA[fileName].model_fields.keys())
+            print(transaction_data.head())
+            print("type:", transaction_data.dtypes)
+            is_valid, message = self.validar_lote(transaction_data, MODEL_SCHEMA[fileName])
+            print(is_valid, message)
+            if not is_valid:
+                return {'error': message}, 400
+    
+            result = self.db.set_transactions(schema=fileName, data_list=transaction_data)
+            if result:
+                return {'message': "Datos CSV procesados correctamente."}, 200
+            else:
+                return {'message': "Falló al procesar los datos."}, 500
+            
+        except Exception as e:
+            print(f"Error: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
