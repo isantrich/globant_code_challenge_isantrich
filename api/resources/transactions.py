@@ -5,7 +5,6 @@ from functions.database import DatabaseConnection
 from .models import DepartmentModel, JobModel, HiredEmployeeModel
 import pandas as pd
 from io import StringIO
-import traceback
 import numpy as np
 
 MODEL_SCHEMA = { 
@@ -58,23 +57,31 @@ class GlobantResource(Resource):
         try:
             # Recibo datos y convierto en un df
             data = StringIO(fileData)
-            
             transaction_data = pd.read_csv(data, header=None, names=MODEL_SCHEMA[fileName].model_fields.keys())
+            if len(transaction_data) > 1000:
+                return {'error': "Bad request: File exceed rows"}, 400
+            
+            # Manejo de valores nulos
             transaction_data = self.nan_handler(transaction_data)
 
-            print(transaction_data.head())
-            print("type:", transaction_data.dtypes)
+        except Exception as e:
+            return {'error': f"Bad Request: {e}"}, 400
+        
+        
+        try:
+            #Validación de la estructura de los datos
             is_valid, message = self.validar_lote(transaction_data, MODEL_SCHEMA[fileName])
-            print(is_valid, message)
+
             if not is_valid:
                 return {'error': message}, 400
-    
-            result = self.db.set_transactions(schema=fileName, data_list=transaction_data)
+
+            result, message = self.db.set_transactions(schema=fileName, data_list=transaction_data)
+
             if result:
-                return {'message': "Datos CSV procesados correctamente."}, 200
+                return {'message': message}, 200
             else:
-                return {'message': "Falló al procesar los datos."}, 500
-            
+                return {'error': message}, 500
+        
         except Exception as e:
-            print(f"Error: {e}")
-            print(f"Traceback: {traceback.format_exc()}")
+            return {'error': f"Server error: {e}"}, 500
+            
