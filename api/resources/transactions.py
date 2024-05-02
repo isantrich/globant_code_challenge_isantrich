@@ -38,6 +38,7 @@ class GlobantResource(Resource):
             if datos[column].isnull().values.any() and datos[column].dtype == 'float64':
                 datos[column] = datos[column].fillna(FILLNA_PARAMETERS)
                 datos[column] = datos[column].astype(np.int64)
+        datos= datos.fillna('Sin información')
         return datos
 
     def post(self):

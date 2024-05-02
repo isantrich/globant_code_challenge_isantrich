@@ -1,9 +1,21 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, select
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import select, insert
 from .models_db import DEPARTMENTS_SCHEMA, HIRED_EMPLOYEES_SCHEMA, JOBS_SCHEMA
 import pandas as pd
+from fastavro import writer, reader
+import os
 
+
+def python_type_to_avro_type(python_type):
+    if python_type == "int":
+        return 'int'
+    elif python_type == "float":
+        return 'double'
+    elif python_type == "str":
+        return 'string'
+    else:
+        return python_type
 
 class DatabaseConnection():
     def __init__(self) -> None:
@@ -60,3 +72,46 @@ class DatabaseConnection():
             return True, f"Datos cargados exitosamente en {schema}"  # Devolver True si la operación fue exitosa
         except Exception as e:
             return False ,  f"Server error: {e}" # Devolver False si la operación falló
+    
+
+    def backup_table_to_avro(self, table_name, table_schema, output_dir):
+        # Obtener los datos de la tabla
+        query = select(table_schema)
+        with self.engine.connect() as connection:
+            result = connection.execute(query)
+            rows = [{column.name: value for column, value in zip(table_schema.columns, row)} for row in result.fetchall()]
+
+        # Crear el esquema AVRO
+        avro_schema = {
+            "type": "record",
+            "name": table_name,
+            "fields": [{"name": column.name, "type": python_type_to_avro_type(column.type.python_type.__name__)} for column in table_schema.columns]
+        }
+        print("AVRO Schema:", avro_schema)
+        # Crear el archivo AVRO
+        avro_file_path = os.path.join(output_dir, f"{table_name}.avro")
+        print("AVRO filepath:", avro_file_path)
+        with open(avro_file_path, 'wb') as avro_file:
+            writer(avro_file, avro_schema, rows)
+
+        print(f"Backup de la tabla '{table_name}' guardado en '{avro_file_path}'")
+
+
+    # Restore a table from an AVRO file
+
+    def restore_table_from_avro(self, table_name, avro_file_path):
+
+        # Read the AVRO file
+        with open(avro_file_path, 'rb') as avro_file:
+            avro_reader = reader(avro_file)
+            rows = [record for record in avro_reader]
+
+        # Create a DataFrame from the rows
+        data_list= pd.DataFrame(rows)
+
+        # Insert the rows into the 
+        with self.engine.connect() as connection:
+                data_list.to_sql(table_name, connection, if_exists='replace', index=False)
+
+        print(f"Restauración de la tabla '{table_name}' completada correctamente")
+
