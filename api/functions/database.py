@@ -6,7 +6,7 @@ import pandas as pd
 from fastavro import writer, reader
 import os
 
-
+# Function to convert a Python type to an Avro type
 def python_type_to_avro_type(python_type):
     if python_type == "int":
         return 'int'
@@ -20,7 +20,7 @@ def python_type_to_avro_type(python_type):
 class DatabaseConnection():
     def __init__(self) -> None:
 
-        # Establecer parámetros de conexión a la base de datos MySQL en AWS
+        # Database connection
         SERVER = 'globant-challenge.c5mkk6cka6qn.us-east-2.rds.amazonaws.com'
         USER = 'admin'
         DB = 'globant_challenge'
@@ -28,10 +28,10 @@ class DatabaseConnection():
         connection_string = f'mysql://{USER}:{PASSWORD}@{SERVER}/{DB}'
 
         try:
-            # Crea un motor de SQLAlchemy para la base de datos
+            # Create a SQLAlchemy engine
             self.engine = create_engine(connection_string)
 
-            # Intenta conectar a la base de datos
+            # Try to connect to the database
             with self.engine.connect() as connection:
                 print("Conexión exitosa")
 
@@ -47,58 +47,42 @@ class DatabaseConnection():
         rows = [dict(zip(columns, row)) for row in result.fetchall()]
         return rows
 
-
-    def set_transactions_old(self, schema, data):
-        if schema == "departments":
-            query = insert(DEPARTMENTS_SCHEMA).values(id= data.id, department= data.department)
-        elif schema == "jobs":
-            query = insert(JOBS_SCHEMA).values(id= data.id, jobs= data.jobs)
-        elif schema == "hired_employees":
-            query = insert(HIRED_EMPLOYEES_SCHEMA).values(id= data.id, name= data.name, datetime = data.datetime, department_id = data.department_id, job_id= data.job_id)
-        else:
-            return False
-
-        with self.engine.connect() as connection:
-            result = connection.execute(query)
-        rows_affected = result.rowcount  # Obtener el número de filas afectadas
-        return rows_affected
     
-
+    # Set transactions in the database
     def set_transactions(self, schema, data_list): 
         try:
-            # Escribir el DataFrame en la base de datos
+            # Insert the rows into the table
             with self.engine.connect() as connection:
                 data_list.to_sql(schema, connection, if_exists='append', index=False)
-            return True, f"Datos cargados exitosamente en {schema}"  # Devolver True si la operación fue exitosa
+            return True, f"Datos cargados exitosamente en {schema}"  
         except Exception as e:
-            return False ,  f"Server error: {e}" # Devolver False si la operación falló
+            return False ,  f"Server error: {e}" 
     
-
+    # Create a backup of a table in AVRO format
     def backup_table_to_avro(self, table_name, table_schema, output_dir):
-        # Obtener los datos de la tabla
+        # Obtaining the table schema
         query = select(table_schema)
         with self.engine.connect() as connection:
             result = connection.execute(query)
             rows = [{column.name: value for column, value in zip(table_schema.columns, row)} for row in result.fetchall()]
 
-        # Crear el esquema AVRO
+        # Create AVRO schema
         avro_schema = {
             "type": "record",
             "name": table_name,
             "fields": [{"name": column.name, "type": python_type_to_avro_type(column.type.python_type.__name__)} for column in table_schema.columns]
         }
-        print("AVRO Schema:", avro_schema)
-        # Crear el archivo AVRO
+
+        # Create AVRO file
         avro_file_path = os.path.join(output_dir, f"{table_name}.avro")
         print("AVRO filepath:", avro_file_path)
         with open(avro_file_path, 'wb') as avro_file:
             writer(avro_file, avro_schema, rows)
 
-        print(f"Backup de la tabla '{table_name}' guardado en '{avro_file_path}'")
+        print(f"Backup table '{table_name}' saved in'{avro_file_path}'")
 
 
     # Restore a table from an AVRO file
-
     def restore_table_from_avro(self, table_name, avro_file_path):
 
         # Read the AVRO file
