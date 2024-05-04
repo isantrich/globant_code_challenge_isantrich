@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template
 from flask_restful import Api
 from resources.transactions import GlobantResource
@@ -10,7 +11,8 @@ app = Flask(__name__)
 api = Api(app)
 
 # Configure logger
-LOG_PATH = 'api/flask_app.log'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_PATH = os.path.join(BASE_DIR, 'flask_app.log')
 
 #Endpoint resource for logs on html
 @app.route('/logshtml')
