@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template
 from flask_restful import Api
-from resources.transactions import GlobantResource
+from resources.transactions import GlobantResource, GlobantResourceJSON
 from logger import LogResource
 from functions.database import DatabaseConnection
 import pandas as pd
@@ -21,6 +21,7 @@ def LogResourceHTML():
         log = f.read()
     log_lines = log.split('\n')
     html_log = '<br>'.join(log_lines)
+    
     return render_template('log_template.html', html_log=html_log)
 
 #Endpoint resource for query hired employees by quarter on html
@@ -44,6 +45,9 @@ api.add_resource(GlobantResource, '/loadtransactions')
 
 #Endpoint for logs file
 api.add_resource(LogResource, '/logs')
+
+#Endponit for get transactions in JSON format
+api.add_resource(GlobantResourceJSON, '/gettransactions/<string:table_name>')
 
 if __name__ == '__main__':
     app.run(debug=True)

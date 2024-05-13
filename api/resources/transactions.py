@@ -47,7 +47,7 @@ class GlobantResource(Resource):
                 datos[column] = datos[column].astype(np.int64)
         datos= datos.fillna('Sin información')
         return datos
-
+    
     # POST method
     def post(self):
         
@@ -103,4 +103,24 @@ class GlobantResource(Resource):
         except Exception as e:
             logger.error("Server error: %s", e)
             return {'error': f"Server error: {e}"}, 500
+        
+
+class GlobantResourceJSON(Resource):
+        # GET method
+    def get( self, table_name):
+
+        if table_name == 'departments':
+            db_connection = DatabaseConnection()
+            df = pd.read_sql_query("SELECT * FROM departments", db_connection.engine)
+            return df.to_json(orient='records')
+        elif table_name == 'jobs':
+            db_connection = DatabaseConnection()
+            df = pd.read_sql_query("SELECT * FROM jobs", db_connection.engine)
+            return df.to_json(orient='records')
+        elif table_name == 'hired_employees':
+            db_connection = DatabaseConnection()
+            df = pd.read_sql_query("SELECT * FROM hired_employees", db_connection.engine)
+            return df.to_json(orient='records')
+        else:
+            return {'error': 'Table not found'}, 404
             
