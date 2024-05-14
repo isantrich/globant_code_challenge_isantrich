@@ -10,8 +10,8 @@ WITH HIRES AS (
 
 )
 SELECT
-d.department,
-j.job,
+CASE WHEN d.department IS NULL THEN 'Department not identified' ELSE d.department END as department,
+CASE WHEN j.job IS NULL THEN 'Job not identified' ELSE j.job END as job,
 CASE WHEN hire_quarter = 1 THEN num_hired_employees else 0 end as Q1,
 CASE WHEN hire_quarter = 2 THEN num_hired_employees else 0 end as Q2,
 CASE WHEN hire_quarter = 3 THEN num_hired_employees else 0 end as Q3,
