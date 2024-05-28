@@ -1,7 +1,6 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, select
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql import select, insert
-from .models_db import DEPARTMENTS_SCHEMA, HIRED_EMPLOYEES_SCHEMA, JOBS_SCHEMA
+from sqlalchemy import create_engine, select
+from sqlalchemy.sql import select
+from .models_db import DEPARTMENTS_SCHEMA
 import pandas as pd
 from fastavro import writer, reader
 import os
@@ -38,7 +37,7 @@ class DatabaseConnection():
         except Exception as e:
             print("Error al conectar:", e)
 
-
+    # TODO: Refactor this method to use the get_transactions method
     def get_transactions(self):      
         query = select(DEPARTMENTS_SCHEMA)
         with self.engine.connect() as connection:

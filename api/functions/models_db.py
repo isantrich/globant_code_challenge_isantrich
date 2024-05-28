@@ -1,5 +1,5 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import MetaData, Table, Column, Integer, String
+
 
 metadata = MetaData()
 
